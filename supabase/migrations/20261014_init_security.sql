@@ -1,3 +1,5 @@
+-- AUDITED 2026-10-15: direct membership creation and role changes disabled.
+-- Deploy the entire migration set; 20261015 adds grants and further constraints.
 -- ==============================================================================
 -- NOSSO CONTROLE — Migration Inicial (Fase 1)
 -- Versão Corrigida: Políticas separadas (SELECT/INSERT/UPDATE/DELETE),
@@ -67,6 +69,7 @@ as $$
     from public.space_members
     where space_id = p_space_id
       and user_id = p_user_id
+      and p_user_id = auth.uid()
   );
 $$;
 
@@ -83,6 +86,7 @@ as $$
     from public.space_members
     where space_id = p_space_id
       and user_id = p_user_id
+      and p_user_id = auth.uid()
       and role in ('owner', 'admin')
   );
 $$;
@@ -100,6 +104,7 @@ as $$
     from public.spaces
     where id = p_space_id
       and owner_id = p_user_id
+      and p_user_id = auth.uid()
   );
 $$;
 
@@ -171,7 +176,7 @@ begin
   end if;
 
   -- Obtém e-mail das claims JWT de forma segura
-  v_user_email := nullif(lower(trim(auth.jwt() ->> 'email')), '');
+  select nullif(lower(trim(email)), '') into v_user_email from auth.users where id = v_user_id and email_confirmed_at is not null;
   if v_user_email is null then
     raise exception 'Não foi possível verificar o e-mail autenticado.';
   end if;
@@ -183,6 +188,7 @@ begin
   where token_hash = p_token_hash
     and status = 'pending'
     and expires_at > now()
+    and exists (select 1 from public.spaces s where s.id = space_id and s.type = 'family')
   for update;
 
   if not found then
@@ -245,7 +251,7 @@ create policy "spaces_select_member" on public.spaces
 
 -- Inserção: apenas o próprio usuário pode se registrar como owner_id
 create policy "spaces_insert_owner" on public.spaces
-  for insert with check (auth.uid() = owner_id);
+  for insert with check (false);
 
 -- Atualização: apenas o proprietário pode alterar o nome/dados do espaço
 create policy "spaces_update_owner" on public.spaces
@@ -265,21 +271,21 @@ create policy "space_members_select" on public.space_members
 -- Inserção: apenas administradores ou proprietários do espaço podem adicionar membros
 create policy "space_members_insert_manager" on public.space_members
   for insert with check (
-    public.is_space_manager(space_id, auth.uid()) or auth.uid() = user_id
+    false -- Membership changes are exclusive to the audited RPCs.
   );
 
 -- Atualização: membros comuns NÃO podem alterar funções ou se promover
 create policy "space_members_update_owner" on public.space_members
   for update using (
-    public.is_space_owner(space_id, auth.uid())
+    false
   ) with check (
-    public.is_space_owner(space_id, auth.uid())
+    false
   );
 
 -- Exclusão: proprietário remove membros ou membro se desvincula espontaneamente
 create policy "space_members_delete" on public.space_members
   for delete using (
-    public.is_space_owner(space_id, auth.uid()) or auth.uid() = user_id
+    role <> 'owner' and (public.is_space_owner(space_id, auth.uid()) or auth.uid() = user_id)
   );
 
 -- ------------------------------------------------------------------------------

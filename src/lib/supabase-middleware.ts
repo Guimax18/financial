@@ -1,8 +1,9 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 import type { Database } from '@/src/types/supabase';
+import { safeRedirect } from './safe-redirect';
 
-export async function updateSession(request: NextRequest) {
+export async function updateSession(request: NextRequest, makeClient = createServerClient) {
   let supabaseResponse = NextResponse.next({
     request,
   });
@@ -11,10 +12,10 @@ export async function updateSession(request: NextRequest) {
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
   if (!supabaseUrl || !supabaseAnonKey) {
-    return supabaseResponse;
+    return new NextResponse('Configure a conexão pública do Supabase para continuar.', { status: 503 });
   }
 
-  const supabase = createServerClient<Database>(
+  const supabase = makeClient<Database>(
     supabaseUrl,
     supabaseAnonKey,
     {
@@ -53,14 +54,18 @@ export async function updateSession(request: NextRequest) {
   if (!user && isProtectedRoute) {
     const url = request.nextUrl.clone();
     url.pathname = '/login';
-    url.searchParams.set('redirectTo', request.nextUrl.pathname);
-    return NextResponse.redirect(url);
+    url.search = '';
+    url.searchParams.set('redirectTo', request.nextUrl.pathname + request.nextUrl.search);
+    const response = NextResponse.redirect(url);
+    supabaseResponse.cookies.getAll().forEach(cookie => response.cookies.set(cookie));
+    return response;
   }
 
   if (user && isAuthRoute) {
-    const url = request.nextUrl.clone();
-    url.pathname = '/dashboard';
-    return NextResponse.redirect(url);
+    const url = new URL(safeRedirect(request.nextUrl.searchParams.get('redirectTo')), request.url);
+    const response = NextResponse.redirect(url);
+    supabaseResponse.cookies.getAll().forEach(cookie => response.cookies.set(cookie));
+    return response;
   }
 
   return supabaseResponse;

@@ -16,11 +16,6 @@ interface Space {
   created_at: string;
 }
 
-interface Member {
-  user_id: string;
-  role: string;
-  invited_at: string;
-}
 
 export default function SpacesPage() {
   const supabase = createClient();
@@ -74,7 +69,7 @@ export default function SpacesPage() {
   }, [supabase]);
 
   React.useEffect(() => {
-    loadSpaces();
+    void Promise.resolve().then(loadSpaces);
   }, [loadSpaces]);
 
   const handleCreateSpace = async (e: React.FormEvent) => {
@@ -96,32 +91,12 @@ export default function SpacesPage() {
         p_type: newSpaceType,
       });
 
-      if (rpcError) {
-        // Fallback: direct insert
-        const { data: spaceData, error: insertError } = await supabase
-          .from('spaces')
-          .insert({
-            owner_id: currentUserId,
-            name: newSpaceName,
-            type: newSpaceType,
-          })
-          .select('id')
-          .single();
-
-        if (insertError) throw insertError;
-
-        if (spaceData) {
-          await supabase.from('space_members').insert({
-            space_id: spaceData.id,
-            user_id: currentUserId,
-            role: 'owner',
-          });
-        }
-      }
+      if (rpcError) throw new Error(rpcError.message);
 
       setIsCreateOpen(false);
       setNewSpaceName('');
       await loadSpaces();
+      window.dispatchEvent(new Event('spaces-updated'));
     } catch (err: unknown) {
       setCreateError(err instanceof Error ? err.message : 'Falha ao criar espaço');
     } finally {
@@ -154,14 +129,10 @@ export default function SpacesPage() {
       const hashArray = Array.from(new Uint8Array(hashBuffer));
       const tokenHash = hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
 
-      // Expiration: 48 hours
-      const expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString();
-
       const { error } = await supabase.from('space_invitations').insert({
         space_id: inviteSpaceId,
         email: inviteEmail.toLowerCase().trim(),
         token_hash: tokenHash,
-        expires_at: expiresAt,
         status: 'pending',
       });
 

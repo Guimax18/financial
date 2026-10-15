@@ -1,11 +1,12 @@
 -- Apply together with 20261014_init_security.sql before exposing the API.
--- Additive repair: original migration is kept for reproducibility.
+-- Additive repair for installations of the old version; initial SQL is also hardened.
 begin;
 
 create unique index spaces_one_personal_per_owner on public.spaces(owner_id) where type = 'personal';
 alter table public.spaces add constraint spaces_name_valid check (length(trim(name)) between 1 and 100);
 alter table public.space_invitations add constraint invitations_hash_valid check (token_hash ~ '^[0-9a-f]{64}$');
 alter table public.space_invitations add constraint invitations_lifetime check (expires_at > created_at and expires_at <= created_at + interval '48 hours');
+alter table public.space_invitations alter column expires_at set default (now() + interval '48 hours');
 
 -- Creation and joining must use the atomic RPCs. Direct grants cannot bypass this.
 drop policy spaces_insert_owner on public.spaces;

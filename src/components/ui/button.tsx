@@ -12,7 +12,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     const base = 'inline-flex items-center justify-center font-medium transition-all duration-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed select-none active:scale-[0.98]';
     
     const variants = {
-      primary: 'bg-emerald-600 text-white hover:bg-emerald-700 focus:ring-emerald-500 shadow-sm shadow-emerald-600/20',
+      primary: 'bg-emerald-700 text-white hover:bg-emerald-800 focus:ring-emerald-500 shadow-sm shadow-emerald-600/20',
       secondary: 'bg-zinc-800 text-zinc-100 hover:bg-zinc-700 focus:ring-zinc-600 border border-zinc-700',
       outline: 'bg-transparent text-zinc-300 hover:text-white hover:bg-zinc-800/60 border border-zinc-800 focus:ring-zinc-700',
       ghost: 'bg-transparent text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/40 focus:ring-zinc-700',

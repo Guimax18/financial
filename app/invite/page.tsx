@@ -46,7 +46,7 @@ function InviteContent() {
       } = await supabase.auth.getUser();
 
       if (!user) {
-        router.push(`/login?redirectTo=/invite?token=${token}`);
+        router.push(`/login?redirectTo=${encodeURIComponent(`/invite?token=${token}`)}`);
         return;
       }
 
@@ -62,40 +62,7 @@ function InviteContent() {
         p_token_hash: tokenHash,
       });
 
-      if (rpcError) {
-        // Fallback: Client-side validation if RPC not yet deployed
-        const { data: invite, error: fetchError } = await supabase
-          .from('space_invitations')
-          .select('*')
-          .eq('token_hash', tokenHash)
-          .eq('status', 'pending')
-          .single();
-
-        if (fetchError || !invite) {
-          throw new Error('Convite inválido, já utilizado ou expirado.');
-        }
-
-        if (new Date(invite.expires_at) < new Date()) {
-          throw new Error('Este convite expirou.');
-        }
-
-        if (invite.email.toLowerCase() !== user.email?.toLowerCase()) {
-          throw new Error(`Este convite foi enviado exclusivamente para ${invite.email}. Você está autenticado como ${user.email}.`);
-        }
-
-        // Add user as member
-        await supabase.from('space_members').insert({
-          space_id: invite.space_id,
-          user_id: user.id,
-          role: 'member',
-        });
-
-        // Mark invitation as accepted
-        await supabase
-          .from('space_invitations')
-          .update({ status: 'accepted' })
-          .eq('id', invite.id);
-      }
+      if (rpcError) throw new Error(rpcError.message);
 
       setStatus({ type: 'success', message: 'Convite aceito com sucesso! Você agora é membro deste espaço.' });
     } catch (err: unknown) {

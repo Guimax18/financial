@@ -32,67 +32,19 @@ export default function OnboardingPage() {
         return;
       }
 
-      // Check if user already has a personal space
-      const { data: existingMemberships } = await supabase
-        .from('space_members')
-        .select('space_id')
-        .eq('user_id', user.id);
-
-      if (!existingMemberships || existingMemberships.length === 0) {
-        // Try calling the atomic RPC function
-        const { error: rpcError } = await supabase.rpc('create_space_with_owner', {
-          p_name: personalSpaceName || 'Meu Espaço Pessoal',
-          p_type: 'personal',
-        });
-
-        // Fallback: If RPC not yet applied, direct insert via client
-        if (rpcError) {
-          const { data: spaceData, error: insertError } = await supabase
-            .from('spaces')
-            .insert({
-              owner_id: user.id,
-              name: personalSpaceName || 'Meu Espaço Pessoal',
-              type: 'personal',
-            })
-            .select('id')
-            .single();
-
-          if (!insertError && spaceData) {
-            await supabase.from('space_members').insert({
-              space_id: spaceData.id,
-              user_id: user.id,
-              role: 'owner',
-            });
-          }
-        }
-
-        // Create family space if selected
-        if (createFamily && familySpaceName.trim()) {
-          const { error: familyRpcError } = await supabase.rpc('create_space_with_owner', {
-            p_name: familySpaceName,
-            p_type: 'family',
-          });
-
-          if (familyRpcError) {
-            const { data: familyData, error: familyInsertError } = await supabase
-              .from('spaces')
-              .insert({
-                owner_id: user.id,
-                name: familySpaceName,
-                type: 'family',
-              })
-              .select('id')
-              .single();
-
-            if (!familyInsertError && familyData) {
-              await supabase.from('space_members').insert({
-                space_id: familyData.id,
-                user_id: user.id,
-                role: 'owner',
-              });
-            }
-          }
-        }
+      const { error: profileError } = await supabase.from('profiles').upsert({
+        id: user.id, full_name: user.user_metadata?.full_name || 'Usuário',
+      }, { onConflict: 'id', ignoreDuplicates: true });
+      if (profileError) throw new Error(profileError.message);
+      const { data: existing, error: lookupError } = await supabase.from('spaces').select('id').eq('owner_id', user.id).eq('type', 'personal');
+      if (lookupError) throw new Error(lookupError.message);
+      if (!existing?.length) {
+        const { error } = await supabase.rpc('create_space_with_owner', { p_name: personalSpaceName, p_type: 'personal' });
+        if (error) throw new Error(error.message);
+      }
+      if (createFamily) {
+        const { error } = await supabase.rpc('create_space_with_owner', { p_name: familySpaceName, p_type: 'family' });
+        if (error) throw new Error(error.message);
       }
 
       router.push('/dashboard');

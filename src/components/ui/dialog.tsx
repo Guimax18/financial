@@ -1,7 +1,5 @@
-import * as React from 'react';
-import { cn } from '@/src/lib/utils';
-import { Button } from './button';
-
+'use client';
+import { useEffect, useId, useRef } from 'react';
 interface DialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -9,34 +7,23 @@ interface DialogProps {
   description?: string;
   children: React.ReactNode;
 }
-
 export function Dialog({ open, onOpenChange, title, description, children }: DialogProps) {
-  if (!open) return null;
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Backdrop */}
-      <div
-        className="fixed inset-0 bg-black/70 backdrop-blur-sm transition-opacity"
-        onClick={() => onOpenChange(false)}
-      />
-
-      {/* Modal Card */}
-      <div className="relative z-50 w-full max-w-lg rounded-2xl border border-zinc-800 bg-zinc-900 p-6 shadow-2xl">
-        <div className="flex items-center justify-between pb-3 border-b border-zinc-800/80">
-          <div>
-            <h3 className="text-lg font-semibold text-white">{title}</h3>
-            {description && <p className="text-sm text-zinc-400 mt-0.5">{description}</p>}
-          </div>
-          <button
-            onClick={() => onOpenChange(false)}
-            className="rounded-lg p-1 text-zinc-400 hover:bg-zinc-800 hover:text-white transition-colors"
-          >
-            ✕
-          </button>
-        </div>
-        <div className="pt-4">{children}</div>
-      </div>
+  const ref = useRef<HTMLDialogElement>(null);
+  const titleId = useId();
+  const descriptionId = useId();
+  useEffect(() => {
+    const dialog = ref.current;
+    if (open && !dialog?.open) dialog?.showModal();
+    if (!open && dialog?.open) dialog.close();
+  }, [open]);
+  return <dialog ref={ref} aria-labelledby={titleId} aria-describedby={description ? descriptionId : undefined}
+    onCancel={() => onOpenChange(false)} onClose={() => onOpenChange(false)}
+    onClick={event => { if (event.target === event.currentTarget) onOpenChange(false); }}
+    className="m-auto max-h-[90dvh] w-[calc(100%-2rem)] max-w-lg overflow-y-auto rounded-2xl border border-zinc-800 bg-zinc-900 p-6 text-zinc-100 backdrop:bg-black/70">
+    <div className="flex items-center justify-between gap-4 border-b border-zinc-800 pb-3">
+      <div><h2 id={titleId} className="text-lg font-semibold">{title}</h2>{description && <p id={descriptionId} className="mt-1 text-sm text-zinc-400">{description}</p>}</div>
+      <button type="button" aria-label="Fechar diálogo" onClick={() => onOpenChange(false)} className="rounded-lg p-2 text-zinc-300 focus-visible:outline-emerald-400">✕</button>
     </div>
-  );
+    <div className="pt-4">{children}</div>
+  </dialog>;
 }

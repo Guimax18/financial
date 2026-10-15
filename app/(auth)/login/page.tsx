@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/src/lib/supabase-browser';
 import { loginSchema } from '@/src/lib/validations';
+import { safeRedirect } from '@/src/lib/safe-redirect';
 import { Button } from '@/src/components/ui/button';
 import { Input } from '@/src/components/ui/input';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/src/components/ui/card';
@@ -12,7 +13,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirectTo = searchParams.get('redirectTo') || '/dashboard';
+  const redirectTo = safeRedirect(searchParams.get('redirectTo'));
   const supabase = createClient();
 
   const [email, setEmail] = React.useState('');
@@ -114,7 +115,7 @@ function LoginForm() {
       </CardContent>
       <CardFooter className="justify-center text-xs text-zinc-400">
         Ainda não tem conta?{' '}
-        <Link href="/signup" className="ml-1 text-emerald-400 hover:text-emerald-300 font-medium">
+        <Link href={`/signup?redirectTo=${encodeURIComponent(redirectTo)}`} className="ml-1 text-emerald-400 hover:text-emerald-300 font-medium">
           Cadastre-se gratuitamente
         </Link>
       </CardFooter>

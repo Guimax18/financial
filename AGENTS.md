@@ -6,7 +6,7 @@ Este documento foi elaborado para garantir a continuidade transparente do desenv
 
 ## 🧭 Visão do Projeto e Estado Atual
 
-- **Fase**: Fase 1 (Autenticação, Isolamento Multi-Tenant, Espaços e Convites Seguros).
+- **Fase**: MVP financeiro local implementado; integração remota pendente. Leia README.md e docs/SECURITY_AUDIT.md antes de continuar.
 - **Diretório Raiz da Aplicação**: `nosso-controle/` (onde se encontram `package.json`, `app/`, `src/`, `supabase/`).
 - **Estado de Build**: `npm run build` executando com **código 0** (todos os tipos TypeScript e páginas estáticas validados com sucesso).
 
@@ -74,3 +74,22 @@ Antes de avançar para a Fase 2 (Contas e Transações), execute o seguinte test
 4. Verificar se **Usuário B** consegue ver o espaço "Família Silva", mas NÃO consegue ver o espaço pessoal do **Usuário A**.
 5. Verificar se **Usuário B** é bloqueado ao tentar promover seu papel para `owner`.
 6. **Usuário C** faz login e tenta consultar diretamente registros do espaço "Família Silva" via API. O banco deve retornar vazio ou 403 devido às políticas RLS `spaces_select_member`.
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+## This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->
+
+## Continuidade em 15/10/2026
+
+- Executar todas as migrations em ordem somente após inspecionar o banco de destino. Não aplicar a versão antiga da migration inicial isoladamente.
+- npm test valida RLS e regras financeiras em PostgreSQL local; npm run test:ui valida interface com API de teste. Homologação real de Auth/PostgREST continua necessária.
+- Usar centavos inteiros e chaves compostas por espaço; preservar security_invoker nas views.
+- Não substituir falhas de RPC por gravações diretas de membros ou espaços.
+- Não introduzir dados de fixture na aplicação. Fixtures existem apenas em tests/support.
+- Não executar reset, migração destrutiva, deploy ou gravações remotas para contornar falhas.

@@ -53,12 +53,11 @@ export default function ProfilePage() {
       data: { user },
     } = await supabase.auth.getUser();
 
-    if (!user) return;
+    if (!user) { setIsLoading(false); router.push('/login'); return; }
 
-    const { error } = await supabase.from('profiles').upsert({
-      id: user.id,
+    const { error } = await supabase.from('profiles').update({
       full_name: fullName,
-    });
+    }).eq('id', user.id).select('id').single();
 
     if (error) {
       setMsg({ type: 'error', text: error.message });
