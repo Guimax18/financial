@@ -55,10 +55,18 @@ npm audit --omit=dev
 
 A suíte de banco usa PostgreSQL via PGlite com três identidades e papéis reais de banco; não exige credenciais ou Docker. O navegador usa uma API local de teste isolada. As diferenças em relação ao Supabase real e os alertas de dependências estão descritos na auditoria.
 
+## Integração Remota e Supabase (Homologação Real)
+
+O projeto está integrado ao projeto Supabase `finance` (`arfukhaeizkbrkmtfdyl`):
+- O banco remoto foi inspecionado previamente (schema `public` vazio, 0 usuários em `auth.users`).
+- As migrations `20261014_init_security.sql`, `20261015_security_hardening.sql` e `20261016_finance_mvp.sql` foram aplicadas e registradas na tabela `supabase_migrations.schema_migrations`.
+- O histórico remoto de migrations reflete com precisão as três versões locais sem duplicação ou divergência.
+- O rate limit de envio de e-mails do Supabase Auth (`over_email_send_rate_limit`) em instâncias gratuitas exige configuração de provedor de e-mail SMTP personalizado no Dashboard para homologação de múltiplos envios em massa.
+
 ## Continuidade e Git
 
-Pasta original preservada: C:/Users/guima/Downloads/projeto finanças/nosso-controle.
+- Pasta original preservada: `C:/Users/guima/Downloads/projeto finanças/nosso-controle`.
+- Cópia de desenvolvimento: `C:/Users/guima/Documents/Codex/2026-10-15/referenced-chatgpt-conversation-this-is-an/nosso-controle`.
+- Branch de trabalho: `feat/secure-finance-mvp`.
+- Repositório remoto de destino: `https://github.com/Guimax18/financial.git`.
 
-Cópia de desenvolvimento: C:/Users/guima/Documents/Codex/2026-10-15/referenced-chatgpt-conversation-this-is-an/nosso-controle.
-
-Branch: feat/secure-finance-mvp. O histórico original foi copiado; alterações herdadas foram registradas antes da continuação. O primeiro commit de preservação inclui também os dois arquivos iniciais preparados pela auditoria (safe-redirect e hardening); o commit seguinte reúne a implementação e a validação. Nenhum push ou publicação foi feito.
