@@ -29,27 +29,15 @@ O SQL recebido permitia `INSERT` em `space_members` quando `auth.uid() = user_id
 
 `npm run test:ui` usa Chromium e a aplicação Next real, com uma API local de contrato. Verifica bloqueio anônimo, criação de conta/despesa, larguras 320/768/1024/1440, ausência de transbordamento da página e análise automática axe na tela de previsão. A fixture não substitui testes de autorização do banco e nunca é usada pela aplicação em produção.
 
-## Validação Remota no Supabase (Projeto finance / arfukhaeizkbrkmtfdyl)
- 
-Em 15/10/2026, foi executada a conexão e aplicação das migrations no ambiente Supabase real:
- 
-1. **Histórico e Migrations Remotas**:
-   - `20261014_init_security.sql`: aplicada e registrada inicialmente via conector oficial.
-   - `20261015_security_hardening.sql`: aplicada de forma atômica e registrada em `supabase_migrations.schema_migrations`.
-   - `20261016_finance_mvp.sql`: aplicada de forma atômica e registrada em `supabase_migrations.schema_migrations`.
-   - Todas as 12 tabelas/views e 7 funções PostgreSQL estão em conformidade estrita com o repositório local.
- 
-2. **PostgREST e RLS Remoto**:
-   - Políticas RLS ativas em `profiles`, `spaces`, `space_members`, `space_invitations`, `accounts`, `categories`, `cards`, `debts`, `transactions`.
-   - RPCs atômicas `create_space_with_owner` e `accept_invitation_secure` operando como `SECURITY DEFINER` com `search_path = ''`.
-   - Views analíticas operando com `security_invoker = true`.
-   - Isolamento de dados entre inquilinos e bloqueio de promoção indevida de membro para owner auditados no banco real.
- 
-3. **Autenticação Real e Limites Operacionais**:
-   - **Fluxo de Auth PKCE**: `app/auth/callback` configurado para troca de código no servidor e redirecionamento seguro com `safeRedirect`.
-   - **Envio de E-mails e Rate Limit**: Na camada gratuita do Supabase, o serviço de envio de e-mails embutido impõe limite estrito (`over_email_send_rate_limit: 429`). Em produção/homologação de equipe, deve ser configurado um servidor SMTP customizado (Resend/SendGrid/SES) no painel do Supabase para confirmação de cadastro e recuperação de senha.
-   - **Renovação SSR de Sessões**: O proxy (`proxy.ts` / `updateSession`) intercepta requisições protegidas `/dashboard` e `/onboarding`, valida sessões com `auth.getUser()` diretamente contra o Supabase e preserva cookies renovados nas respostas de redirecionamento.
+## Verificação direta no Supabase
 
+Em 15/10/2026, o projeto finance / arfukhaeizkbrkmtfdyl foi conferido pelo Dashboard autenticado. As 13 condições de supabase/checks/security.sql retornaram true. Isso comprova as condições estruturais consultadas; não substitui login, renovação de sessão, entrega de e-mail e testes com três JWTs reais.
+
+Foram encontrados grants padrão excessivos nas views, mesmo com RLS das tabelas e security_invoker ativos. A migration 20261016023052_read_only_balance_views.sql removeu esses grants de PUBLIC/anon/authenticated, mantendo somente SELECT para authenticated. A gravação da migration e a restrição de permissões ocorreram na mesma transação. O estado final foi consultado novamente.
+
+O histórico remoto anterior de segurança e finanças guarda apenas comentários. O SQL registrado da primeira migration também não é idêntico ao arquivo local. Portanto, a afirmação anterior de conformidade estrita do histórico foi corrigida. Os nomes locais foram alinhados às versões registradas, sem reaplicar nem modificar registros remotos antigos. Consulte docs/REMOTE_VERIFICATION.md para a distinção entre evidência observada e testes pendentes.
+
+Os callbacks locais foram adicionados explicitamente à configuração do Supabase. O SMTP customizado permanece desativado. Não foram alteradas senha, exigência de confirmação de e-mail ou proteções de autenticação.
 
 ## Dependências
 

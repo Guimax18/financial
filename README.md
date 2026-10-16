@@ -27,7 +27,7 @@ Configure no Supabase as URLs autorizadas de /auth/callback para cadastro e recu
 
 Leia [a auditoria](docs/SECURITY_AUDIT.md) antes de aplicar SQL. A versão recebida da migration inicial continha entrada indevida em espaços; foi corrigida. A migration adicional também repara instalações da versão antiga.
 
-Ordem: 20261014_init_security.sql → 20261015_security_hardening.sql → 20261016_finance_mvp.sql. Os nomes são versões de ordenação; todos foram preparados nesta etapa. Não há aplicação remota automática. Em instalações existentes, confirme o histórico e aplique somente as migrations pendentes em homologação. Não reexecute a migration inicial já registrada.
+Ordem: 20261016010452_20261014_init_security.sql → 20261016010500_20261015_security_hardening.sql → 20261016010600_20261016_finance_mvp.sql → 20261016023052_read_only_balance_views.sql. Os nomes são versões de ordenação; todos foram preparados nesta etapa. Não há aplicação remota automática. Em instalações existentes, confirme o histórico e aplique somente as migrations pendentes em homologação. Não reexecute a migration inicial já registrada.
 
 O histórico remoto, o esquema e dados atuais precisam ser inspecionados antes de qualquer aplicação. Nenhuma limpeza ou reset é necessária para os testes locais. Use a autenticação oficial da CLI ou um conector autorizado para acesso remoto, nunca credenciais no código.
 
@@ -55,13 +55,28 @@ npm audit --omit=dev
 
 A suíte de banco usa PostgreSQL via PGlite com três identidades e papéis reais de banco; não exige credenciais ou Docker. O navegador usa uma API local de teste isolada. As diferenças em relação ao Supabase real e os alertas de dependências estão descritos na auditoria.
 
-## Integração Remota e Supabase (Homologação Real)
+## Integração remota: evidência e pendências
 
-O projeto está integrado ao projeto Supabase `finance` (`arfukhaeizkbrkmtfdyl`):
-- O banco remoto foi inspecionado previamente (schema `public` vazio, 0 usuários em `auth.users`).
-- As migrations `20261014_init_security.sql`, `20261015_security_hardening.sql` e `20261016_finance_mvp.sql` foram aplicadas e registradas na tabela `supabase_migrations.schema_migrations`.
-- O histórico remoto de migrations reflete com precisão as três versões locais sem duplicação ou divergência.
-- O rate limit de envio de e-mails do Supabase Auth (`over_email_send_rate_limit`) em instâncias gratuitas exige configuração de provedor de e-mail SMTP personalizado no Dashboard para homologação de múltiplos envios em massa.
+Em 15/10/2026, o projeto finance (arfukhaeizkbrkmtfdyl) foi inspecionado diretamente no Dashboard autenticado. As 13 consultas de supabase/checks/security.sql passaram no banco remoto. RLS, privilégios, views invoker e as proteções estruturais principais foram conferidos sem ler dados financeiros dos usuários.
+
+O histórico anterior não preserva integralmente o SQL: o registro de segurança contém apenas um comentário, o financeiro também, e o SQL inicial registrado difere do arquivo local. A existência de um registro não prova paridade de conteúdo. A estrutura efetiva foi verificada separadamente; não foram reescritos os registros antigos.
+
+Os nomes locais agora usam os timestamps realmente registrados, mantendo o nome descritivo anterior:
+
+| Versão | Migration |
+| --- | --- |
+| 20261016010452 | 20261014_init_security |
+| 20261016010500 | 20261015_security_hardening |
+| 20261016010600 | 20261016_finance_mvp |
+| 20261016023052 | read_only_balance_views |
+
+A última migration foi testada e aplicada nesta continuação: remove permissões herdadas desnecessárias das três views e mantém apenas SELECT para authenticated. O SQL completo foi registrado na mesma transação, sem apagar dados. Não reaplicar as migrations anteriores nem executar reset. Conferir o histórico antes de qualquer novo db push.
+
+Site URL confirmado: http://localhost:3000. Foram salvos os callbacks http://localhost:3000/auth/callback e http://localhost:3000/auth/callback?next=** para desenvolvimento. O SMTP próprio está desativado; confirmação e recuperação por e-mail ainda precisam de validação humana. Não foi desativada a confirmação de e-mail. Testes completos com três sessões reais de Auth/PostgREST continuam pendentes.
+
+Acesso por navegador autenticado está disponível nesta conversa; processos do terminal desta sessão não conseguiram acessar Supabase/GitHub pela rede. Para executar a aplicação com acesso real do servidor, use um terminal autenticado do usuário. Não transferir chaves privadas para o chat.
+
+O comando npm test usa o suporte nativo a TypeScript do Node 24, com resolução de módulos para os testes; não depende mais de tsx. A suíte de banco reproduz os grants padrão do Supabase para impedir a regressão das views. Detalhes e limites em docs/REMOTE_VERIFICATION.md.
 
 ## Continuidade e Git
 

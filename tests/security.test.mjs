@@ -15,6 +15,7 @@ async function setup() {
  create function auth.jwt() returns jsonb language sql stable as $$select coalesce(nullif(current_setting('request.jwt.claims',true),''),'{}')::jsonb$$;
  grant usage on schema public, auth to anon, authenticated;
  grant execute on all functions in schema auth to anon, authenticated;
+ alter default privileges in schema public grant all on tables to anon, authenticated;
  insert into auth.users values ('${A}','a@example.test',now()),('${B}','b@example.test',now()),('${C}','c@example.test',null);`);
  for (const name of (await readdir('supabase/migrations')).filter(n=>n.endsWith('.sql')).sort()) await db.exec(await readFile(`supabase/migrations/${name}`,'utf8'));
  return db;
@@ -26,6 +27,14 @@ async function as(db,id,sql) {
  return db.query(sql);
 }
 const scalar = result => Object.values(result.rows[0])[0];
+test('deployment catalog checks pass with Supabase default privileges', async () => {
+ const db = await setup();
+ try {
+  const { rows } = await db.query(await readFile('supabase/checks/security.sql','utf8'));
+  assert.equal(rows.length,13);
+  assert.deepEqual(rows.filter(row => row.passed !== true),[]);
+ } finally { await db.close(); }
+});
 test('RLS: three users, invitations and immutable ownership', async () => {
  const db = await setup();
  try {
@@ -67,6 +76,13 @@ test('finance: tenant foreign keys, exact balances, transfers, cards, debts, for
  const one = scalar(await as(db,A,`insert into public.accounts(space_id,name,opening_cents) values('${shared}','Banco',10000) returning id`));
  const two = scalar(await as(db,A,`insert into public.accounts(space_id,name) values('${shared}','Carteira') returning id`));
  const foreign = scalar(await as(db,C,`insert into public.accounts(space_id,name) values('${privateSpace}','Segredo') returning id`));
+ for (const view of ['account_balances','card_balances','debt_balances']) {
+  await assert.rejects(as(db,null,`select * from public.${view}`),/permission/i);
+  await db.exec('reset role');
+  for (const privilege of ['INSERT','UPDATE','DELETE','TRUNCATE','REFERENCES','TRIGGER']) {
+   assert.equal(scalar(await db.query(`select has_table_privilege('authenticated','public.${view}','${privilege}')`)),false);
+  }
+ }
  const category = scalar(await as(db,A,`insert into public.categories(space_id,name,kind) values('${shared}','Comida','expense') returning id`));
  const card = scalar(await as(db,A,`insert into public.cards(space_id,name,limit_cents,closing_day,due_day) values('${shared}','Cartão',100000,20,28) returning id`));
  const debt = scalar(await as(db,A,`insert into public.debts(space_id,name,principal_cents,due_date) values('${shared}','Empréstimo',50000,current_date+10) returning id`));

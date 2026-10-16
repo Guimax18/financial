@@ -6,7 +6,7 @@ Este documento foi elaborado para garantir a continuidade transparente do desenv
 
 ## 🧭 Visão do Projeto e Estado Atual
 
-- **Fase**: MVP financeiro local implementado; integração remota pendente. Leia README.md e docs/SECURITY_AUDIT.md antes de continuar.
+- **Fase**: MVP financeiro implementado; 13 checagens de estrutura passaram no Supabase remoto. Auth completo com três sessões ainda pendente. Leia README.md e docs/SECURITY_AUDIT.md antes de continuar.
 - **Diretório Raiz da Aplicação**: `nosso-controle/` (onde se encontram `package.json`, `app/`, `src/`, `supabase/`).
 - **Estado de Build**: `npm run build` executando com **código 0** (todos os tipos TypeScript e páginas estáticas validados com sucesso).
 
@@ -15,7 +15,7 @@ Este documento foi elaborado para garantir a continuidade transparente do desenv
 ## 🗄 Modelo de Dados e Migrations
 
 A migration atualizada e revisada está em:
-👉 `supabase/migrations/20261014_init_security.sql`
+👉 `supabase/migrations/20261016010452_20261014_init_security.sql`
 
 ### Entidades Implementadas:
 1. `profiles`: dados de perfil (vínculo com `auth.users`).
@@ -28,7 +28,7 @@ A migration atualizada e revisada está em:
 - `is_space_manager(uuid, uuid)`: Verificação de privilégios de gestão.
 - `is_space_owner(uuid, uuid)`: Verificação de posse.
 - `create_space_with_owner(text, text)`: `SECURITY DEFINER` que cria o espaço e insere o membro proprietário de maneira 100% atômica utilizando `auth.uid()` diretamente no servidor.
-- `accept_invitation_secure(text)`: `SECURITY DEFINER` que valida o hash do token, expiração e e-mail autenticado obtido diretamente de `auth.jwt()`.
+- `accept_invitation_secure(text)`: `SECURITY DEFINER` que valida o hash do token, expiração e e-mail atual e confirmado consultado em `auth.users` dentro da função privilegiada.
 
 ---
 
@@ -93,3 +93,10 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 - Não substituir falhas de RPC por gravações diretas de membros ou espaços.
 - Não introduzir dados de fixture na aplicação. Fixtures existem apenas em tests/support.
 - Não executar reset, migração destrutiva, deploy ou gravações remotas para contornar falhas.
+
+## Verificação direta do banco nesta continuação
+
+- Consulte docs/REMOTE_VERIFICATION.md antes de operar migrations: os timestamps locais foram alinhados ao histórico real; não reaplique versões antigas.
+- O histórico antigo de segurança/finanças contém comentários no lugar do SQL completo; não afirmar paridade byte a byte.
+- 20261016023052_read_only_balance_views.sql foi aplicada com SQL completo registrado atomicamente. Views: apenas SELECT para authenticated.
+- supabase/checks/security.sql é uma auditoria somente de leitura com 13 condições, também executada pela suíte local.
